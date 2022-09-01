@@ -2,3 +2,6 @@
 
 
 # Active Recon (scanning)
+## NMap:
+
+## Automated Tools:

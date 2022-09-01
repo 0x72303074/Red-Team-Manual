@@ -1,7 +1,7 @@
 # Passive Recon
 
 
-# Active Recon (scanning)
+# Active Recon / Scanning
 ## NMap:
 
 ## Automated Tools:

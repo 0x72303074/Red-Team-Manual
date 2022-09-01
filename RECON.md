@@ -7,6 +7,17 @@
 - Wordlist Scraping:  `cewl example.com -m 5 -w words.txt`
 
 # Active Recon / Scanning
-## NMap:
+## Host Discovery:
+- ARP:  `netdiscover -r 10.11.1.0/24`
+- Ping Sweep:
+    - Unix:
+    - Windows:
+- NMap:
+## Port Scanning:
+### NMap:
+
+## Vulnerability Scanning:
 
 ## Automated Tools:
+### Autorecon:
+`autorecon <IP>`

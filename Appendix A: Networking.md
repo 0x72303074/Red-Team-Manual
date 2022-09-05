@@ -1,3 +1,17 @@
+### TTL Fingerprinting:
+
+    Windows: 128
+    Linux: 64
+    Solaris: 255
+    Cisco: 255
+    
+### Ephemeral Port Ranges:
+
+    1024-5000: Windows<=XP, FreeBSD<=4.11, Linux<=2.2
+    49152-65535: FreeBSD>=5.0, Windows>=Vista, Apple MacOSX/IOS
+    32768-61000: Linux>=2.4, Solaris
+    10000-65535: FreeBSD>=8.0
+
 ## Packet Sniffing:
 
     Sniffing is done before any processing by networking stack

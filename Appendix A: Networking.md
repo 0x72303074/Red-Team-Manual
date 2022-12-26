@@ -202,6 +202,7 @@
     Basic Nmap:  nmap 192.168.1.0/24 [-Pn/P0] [-p-]
     Netcat Scans:
         Scan 1 system for a range of ports using Netcat:
+            for i in $(seq 1 65535); do nc -nvz -w 1 172.17.0.1 $i 2>&1; done | grep -v "refused"
             for i in {20..65535}; do nc -nzvw1 192.168.65.20 $i 2>&1 & done | grep -E 'succ|open$'
         Scan 1 system for a range of ports using /DEV/TCP:
             for p in {1..1023}; do(echo >/dev/tcp/10.0.0.104/$p) >/dev/null 2>&1 && echo "$p open"; done

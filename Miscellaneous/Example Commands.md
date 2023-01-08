@@ -15,6 +15,8 @@
           curl -i -X POST -H "apikey: <key>" http://abc:8000/render
           curl -i -X POST -H "apikey: <key>" -H "Content-Type: application/json" -d '{"url":"http://abc/render/url"}' http://abc:8000/render --output out.pdf
               Or via GET:  curl "http://abc:8000/render?url=http://abc/render/url&apikey=<key>"
+          curl http://10.10.10.108/zabbix/api_jsonrpc.php -H "Content-Type: application/json-rpc" -d '{"jsonrpc":"2.0", "method":"user.login", "id":1, "auth":null, "params":{"user": "blah", "password": "blah"}}'
+            curl -s http://10.10.10.108/zabbix/api_jsonrpc.php -H "Content-Type: application/json-rpc" -d '{"jsonrpc":"2.0", "method":"user.get", "id":1, "auth":"blah", "params":{"output": "extend"}}' | jq .
    
 **Find:**
 
@@ -51,6 +53,7 @@
 
       User Crontabs:  for user in $(getent passwd | awk -F ':' '{print $1}' ); do echo $user; crontab -u $user -l  2>/dev/null; done|more
       View processes writing to files:  lsof | awk '$4~/w/ && $5~/REG/ && $9!~/^.dev|^.proc|^.run/{print $0}'
+      Monitoring for Ping Payload Success:  sudo tcpdump -i tun0 'icmp and host <tgt ip>'  
 
 **Tar:**
 
@@ -59,4 +62,12 @@
       tar -cvf /tmp/backup/run.tar /var/run
       ex. Extract 17th file of archive:  tar -xf run1.tar `tar -tf run1.tar | head -n 17 | tail -n 1`
      
-      
+**Docker:**
+    sudo docker-compose -f concord-1.43.0/docker-compose.yml down
+    sudo docker-compose -f concord-1.83.0/docker-compose.yml up -d
+    docker-compose down
+    TEMPLATING_ENGINE=ejs docker-compose up
+    Interactive CLI & Remote Debugging:  docker-compose -f ~/chips/docker-compose.yml exec chips node --inspect=0.0.0.0:9228
+    View logs:  docker-compose -f ~/chips/docker-compose.yml logs chips
+    View libraries/dependencies:  docker-compose -f ~/chips/docker-compose.yml run chips npm list -prod -depth 1
+    TEMPLATING_ENGINE=ejs docker-compose up &     
